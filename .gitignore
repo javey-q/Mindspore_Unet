@@ -8,5 +8,5 @@ src/__pycache__
 pretrained
 datas
 pred
-#train.sh
-#predict.sh
+train.sh
+predict.sh
