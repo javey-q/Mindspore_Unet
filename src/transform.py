@@ -6,10 +6,10 @@ import numpy as np
 class TransformTrain:
     def __init__(self, base_size, crop_size, multi_scale, scale, ignore_label, mean, std,
                  hflip_prob=0.5, vflip_prob=0.5):
-        trans = [A.Resize(height=base_size, width=base_size),
-                 A.HorizontalFlip(p=hflip_prob),
-                 A.VerticalFlip(p=vflip_prob),
-                 A.RandomBrightnessContrast(p=0.2),
+        trans = [A.Resize(height=base_size[0], width=base_size[1]),
+                 # A.HorizontalFlip(p=hflip_prob),
+                 # A.VerticalFlip(p=vflip_prob),
+                 # A.RandomBrightnessContrast(p=0.2),
                  ]
         if multi_scale:
             trans.append(A.RandomScale(scale_limit=(-scale, scale), p=0.8))
@@ -22,7 +22,7 @@ class TransformTrain:
             # A.GlassBlur(p=0.5),
             # A.RandomGamma(p=0.5),
             A.RandomCrop(height=crop_size[0], width=crop_size[1]),
-            A.Normalize(mean=mean, std=std),
+            # A.Normalize(mean=mean, std=std),
         ])
         self.transforms = A.Compose(trans)
 
@@ -32,7 +32,7 @@ class TransformTrain:
         mask = augmented['mask']
         image = np.asarray(image, np.float32)
         mask = np.asarray(mask, np.float32)
-        mask = mask / 255.0
+        # mask = mask / 255.0
         image = image.transpose((2, 0, 1))
         return image, mask
 
@@ -40,7 +40,7 @@ class TransformTrain:
 class TransformEval:
     def __init__(self, crop_size, mean, std):
         self.transforms = A.Compose([
-            A.Resize(crop_size, crop_size),
+            A.Resize(height=crop_size[0], width=crop_size[1]),
             A.Normalize(mean=mean, std=std),
         ])
 
@@ -50,7 +50,7 @@ class TransformEval:
         mask = augmented['mask']
         image = np.asarray(image, np.float32)
         mask = np.asarray(mask, np.float32)
-        mask = mask / 255.0
+        # mask = mask / 255.0
         image = image.transpose((2, 0, 1))
         return image, mask
 

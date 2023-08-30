@@ -32,8 +32,8 @@ net_name = 'seresnext50_unet_fpn'
 
 
 resume_epoch = 1
-base_size = 800
-crop_size = 640
+base_size = (720, 1280)
+crop_size = (640, 1024)
 dir_root = './datas'
 dir_weights = './weights'
 dir_log = './logs'
@@ -60,7 +60,7 @@ def cosine_lr(base_lr, decay_steps, total_steps, resume_steps=0):
 def trainNet(net, criterion, epochs, batch_size):
     dataset_train_buffer = RSDataset(root=dir_root, mode=Mode.train,
                                      multiscale=True, scale=0.5,
-                                     base_size=base_size, crop_size=(crop_size, crop_size))
+                                     base_size=base_size, crop_size=crop_size)
     dataset_train = ds.GeneratorDataset(
         source=dataset_train_buffer,
         column_names=['data', 'label'],
