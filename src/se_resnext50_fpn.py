@@ -42,12 +42,12 @@ class _ASPPModule(nn.Cell):
                                      stride=1, padding=padding, pad_mode='pad', dilation=dilation, has_bias=False,
                                      group=group)
         self.bn = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU()
+        self.gelu = nn.GELU()
 
     def construct(self, x):
         x = self.atrous_conv(x)
         x = self.bn(x)
-        return self.relu(x)
+        return self.gelu(x)
 
 
 class ASPP(nn.Cell):
@@ -62,11 +62,11 @@ class ASPP(nn.Cell):
             # nn.AdaptiveMaxPool2d((1, 1)),
             nn.Conv2d(inplanes, mid_c, 1, stride=1, padding=0, pad_mode='pad', has_bias=False),
             nn.BatchNorm2d(mid_c),
-            nn.ReLU())
+            nn.GELU())
         out_c = out_c if out_c is not None else mid_c
         self.out_conv = nn.SequentialCell(
             nn.Conv2d(mid_c * (2 + len(dilations)), out_c, 1, padding=0, pad_mode='pad', has_bias=False),
-            nn.BatchNorm2d(out_c), nn.ReLU())
+            nn.BatchNorm2d(out_c), nn.GELU())
         self.drop_aspp = nn.Dropout(0.5)
 
     def construct(self, x):
@@ -90,7 +90,7 @@ class FPN(nn.Cell):
         self.convs = nn.CellList([nn.SequentialCell(
             conv3x3(in_ch, out_ch * 2),
             nn.BatchNorm2d(out_ch * 2),
-            nn.ReLU(),
+            nn.GELU(),
             conv3x3(out_ch * 2, out_ch)
         ) for in_ch, out_ch in zip(in_channels, out_channels)])
 
@@ -105,15 +105,14 @@ class FPN(nn.Cell):
         return ops.Concat(axis=1)(hcs)
 
 
-
 class DecodeBlock(nn.Cell):
     def __init__(self, in_channel_up, in_channel_left, out_channel):
         super(DecodeBlock, self).__init__()
 
         self.bn1 = nn.BatchNorm2d(in_channel_left)
-        self.relu = nn.ReLU()
+        self.gelu = nn.GELU()
         self.upsample = ops.DepthToSpace(2)
-        in_channel = in_channel_up//4 + in_channel_left
+        in_channel = in_channel_up // 4 + in_channel_left
         # self.upsample = nn.Conv2dTranspose(in_channel_up, in_channel_up//2, kernel_size=2, stride=2, pad_mode='same')
         # in_channel = in_channel_up // 2 + in_channel_left
         self.conv3x3_1 = conv3x3(in_channel, out_channel)
@@ -121,18 +120,19 @@ class DecodeBlock(nn.Cell):
         self.conv3x3_2 = conv3x3(out_channel, out_channel)
         self.concat = ops.Concat(axis=1)
 
-    def construct(self, inputs_up, inputs_left): 
+    def construct(self, inputs_up, inputs_left):
         up_out = self.upsample(inputs_up)
-        cat_x = self.relu(self.concat([up_out, self.bn1(inputs_left)]))
+        cat_x = self.gelu(self.concat([up_out, self.bn1(inputs_left)]))
         out = self.conv3x3_2(self.conv3x3_1(cat_x))
-        
+
         return out
 
 
 class UNET_SERESNEXT50_FPN(nn.Cell):
-    def __init__(self, resolution, load_pretrained=True):
+    def __init__(self, num_cls, resolution, load_pretrained=True):
         super(UNET_SERESNEXT50_FPN, self).__init__()
 
+        self.num_cls = num_cls
         h, w = resolution
 
         seresnext50 = se_resnext50_32x4d()
@@ -165,15 +165,15 @@ class UNET_SERESNEXT50_FPN(nn.Cell):
         self.decoder1 = DecodeBlock(64, 64, 32)
 
         self.fpn = FPN([512, 256, 128, 64], [32, 32, 32, 32])
-        
-        self.drop_final= nn.Dropout(0.9)
+
+        self.drop_final = nn.Dropout(0.9)
         # final conv
         self.final_conv = nn.SequentialCell(
-            conv3x3(32*4+32, 64),
+            conv3x3(32 * 4 + 32, 64),
             # nn.Conv2dTranspose(64, 32, kernel_size=4, stride=2, pad_mode='same'),
             # nn.BatchNorm2d(32),
-            nn.ELU(),
-            conv1x1(64, 1)
+            nn.GELU(),
+            conv1x1(64, num_cls)
         )
 
     def construct(self, inputs):
@@ -194,16 +194,16 @@ class UNET_SERESNEXT50_FPN(nn.Cell):
         y1 = self.decoder1(y2, x0)  # 32,h/2,w/2
 
         hypercol = self.fpn([y5, y4, y3, y2], y1)
-        
+
         hypercol = self.drop_final(hypercol)
         logits = self.final_conv(hypercol)
-        
+
         bs, c, h, w = F.shape(logits)
         logits = P.ResizeBilinear((h * 2, w * 2))(logits)
 
         return logits
 
 
-def seresnext50_unet_fpn(resolution=(512, 512), load_pretrained=False):
-    model = UNET_SERESNEXT50_FPN(resolution, load_pretrained)
+def seresnext50_unet_fpn(num_cls, resolution=(512, 512), load_pretrained=False):
+    model = UNET_SERESNEXT50_FPN(num_cls, resolution, load_pretrained)
     return model
