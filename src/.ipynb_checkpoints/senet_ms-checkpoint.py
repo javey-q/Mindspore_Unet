@@ -309,7 +309,8 @@ class SENet(nn.Cell):
             downsample_padding=downsample_padding
         )
         self.avg_pool = nn.AvgPool2d(kernel_size=7, stride=1, pad_mode='valid')
-        self.dropout = nn.Dropout(keep_prob=1.0 - dropout_p) if dropout_p is not None else None
+        # self.dropout = nn.Dropout(keep_prob=1.0 - dropout_p) if dropout_p is not None else None
+        self.dropout = nn.Dropout(p=dropout_p) if dropout_p is not None else None
         self.last_linear = nn.Dense(in_channels=512 * block.expansion, out_channels=num_classes, has_bias=False)
 
     def _make_layer(self, block, planes, blocks, group, reduction, stride=1,

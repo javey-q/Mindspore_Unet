@@ -40,6 +40,7 @@ class GroupConv(nn.Cell):
     Returns:
         tensor, output tensor.
     """
+
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride, pad_mode="pad", padding=0, group=1, has_bias=False):
         super(GroupConv, self).__init__()
@@ -50,7 +51,7 @@ class GroupConv(nn.Cell):
         self.op_concat = P.Concat(axis=1)
         self.cast = P.Cast()
         for _ in range(group):
-            self.convs.append(nn.Conv2d(in_channels//group, out_channels//group,
+            self.convs.append(nn.Conv2d(in_channels // group, out_channels // group,
                                         kernel_size=kernel_size, stride=stride, has_bias=has_bias,
                                         padding=padding, pad_mode=pad_mode, group=1, weight_init=conv_weight_init))
 
@@ -67,6 +68,7 @@ class SEModule(nn.Cell):
     """
     SEModule
     """
+
     def __init__(self, channels, reduction):
         super(SEModule, self).__init__()
         self.avg_pool = P.ReduceMean(keep_dims=True)
@@ -94,6 +96,7 @@ class Bottleneck(nn.Cell):
     """
     Base class for bottlenecks that implements `forward()` method.
     """
+
     def construct(self, x):
         """
         construct
@@ -197,6 +200,7 @@ class SENet(nn.Cell):
     """
     SENet.
     """
+
     def __init__(self, block, layers, group, reduction, dropout_p=0.2,
                  inplanes=128, input_3x3=True, downsample_kernel_size=3,
                  downsample_padding=1, num_classes=1000):
@@ -309,7 +313,8 @@ class SENet(nn.Cell):
             downsample_padding=downsample_padding
         )
         self.avg_pool = nn.AvgPool2d(kernel_size=7, stride=1, pad_mode='valid')
-        self.dropout = nn.Dropout(keep_prob=1.0 - dropout_p) if dropout_p is not None else None
+        # self.dropout = nn.Dropout(keep_prob=1.0 - dropout_p) if dropout_p is not None else None
+        self.dropout = nn.Dropout(p=dropout_p) if dropout_p is not None else None
         self.last_linear = nn.Dense(in_channels=512 * block.expansion, out_channels=num_classes, has_bias=False)
 
     def _make_layer(self, block, planes, blocks, group, reduction, stride=1,
